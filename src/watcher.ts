@@ -12,6 +12,18 @@ import { receivedDuffs, sweep } from "./sweeper.js";
 
 const watching = new Set<string>();
 const TERMINAL = new Set(["confirmed", "swept", "mismatch"]);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// When InstantSend is disabled, wait for `minConfirmations` block confirmations
+// (a ChainLock counts as final regardless). Polls up to ~1h.
+async function awaitConfirmations(txid: string, minConfirmations: number): Promise<void> {
+  const sdk = getSdk();
+  for (let i = 0; i < 240; i++) {
+    const tx = await sdk.getTransaction(txid);
+    if (tx.isChainLocked || tx.confirmations >= minConfirmations) return;
+    await sleep(15_000);
+  }
+}
 
 async function watchOne(intent: Intent): Promise<void> {
   if (watching.has(intent.id)) return;
@@ -21,6 +33,10 @@ async function watchOne(intent: Intent): Promise<void> {
     // Detect ANY incoming payment (>= 1 duff) that reaches finality, then
     // compare the actual amount to what was expected.
     const info = await sdk.waitForPayment(intent.address, 1);
+    // InstantSend off → require block confirmations (ChainLock also accepted).
+    if (intent.instant_send === 0) {
+      await awaitConfirmations(info.txid, intent.min_confirmations);
+    }
     const received = await receivedDuffs(info.txid, intent.address);
 
     const fresh = getIntent(intent.id);
