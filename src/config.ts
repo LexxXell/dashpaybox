@@ -39,6 +39,9 @@ export const config = {
   paymentWindowSeconds: parseInt(opt("PAYMENT_WINDOW_SECONDS", "900"), 10),
   defaultInstantSend: bool("DEFAULT_INSTANT_SEND", true),
   defaultMinConfirmations: parseInt(opt("DEFAULT_MIN_CONFIRMATIONS", "1"), 10),
+  // On startup, scan the last N blocks for payments missed while the service
+  // was down (the live watcher only sees mempool + new blocks).
+  reconcileLookbackBlocks: parseInt(opt("RECONCILE_LOOKBACK_BLOCKS", "30"), 10),
 
   // storage
   dbPath: opt("DB_PATH", "./data/dash-pay.db"),
