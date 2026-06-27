@@ -4,17 +4,16 @@
 //   - live: `waitForPayment` (mempool + new blocks) while the service runs;
 //   - startup reconcile: scan the last N blocks for payments that arrived while
 //     the service was down (the live subscription can't replay past blocks).
-import { Block, DashCoreSDK } from "dash-core-sdk";
+import { DashCoreSDK } from "dash-core-sdk";
 import { config } from "./config.js";
 import { getSdk } from "./dash.js";
 import { getIntent, listOpenIntents, updateIntent, type Intent } from "./db.js";
 import { sendCallback } from "./callback.js";
-import { receivedDuffs, sweep } from "./sweeper.js";
+import { receivedDuffs, scanBlockForAddresses, sweep } from "./sweeper.js";
 
 const watching = new Set<string>();
 const settling = new Set<string>();
 const TERMINAL = new Set(["confirmed", "swept", "mismatch"]);
-const NET = config.network === "mainnet" ? 0 : 1; // dash-core-sdk Network enum
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Block until the payment reaches finality per the intent's policy:
@@ -87,29 +86,20 @@ async function reconcile(): Promise<void> {
   const pending = listOpenIntents();
   if (pending.length === 0) return;
   const byAddress = new Map(pending.map((p) => [p.address, p.id]));
+  const addresses = new Set(byAddress.keys());
   try {
     const sdk = getSdk();
     const tip = (await sdk.getBestBlockHeight()).height;
     const from = Math.max(1, tip - config.reconcileLookbackBlocks + 1);
     for (let h = from; h <= tip; h++) {
-      let block: Block;
       try {
-        block = Block.fromBytes((await sdk.getBlock({ height: h })).block);
-      } catch (err) {
-        console.error(`reconcile getBlock ${h} failed:`, err);
-        continue;
-      }
-      for (const tx of block.txs) {
-        for (const out of tx.outputs) {
-          let addr: string | undefined;
-          try {
-            addr = out.script.getAddress(NET);
-          } catch {
-            addr = undefined;
-          }
-          const id = addr ? byAddress.get(addr) : undefined;
-          if (id !== undefined) await settleIntent(id, tx.hash());
+        const raw = (await sdk.getBlock({ height: h })).block;
+        for (const hit of scanBlockForAddresses(raw, addresses)) {
+          const id = byAddress.get(hit.address);
+          if (id !== undefined) await settleIntent(id, hit.txid);
         }
+      } catch (err) {
+        console.error(`reconcile block ${h} failed:`, err);
       }
     }
   } catch (err) {

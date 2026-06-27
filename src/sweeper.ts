@@ -12,6 +12,7 @@ import { decrypt } from "./wallet.js";
 const dashcore = pkg as unknown as {
   Transaction: new (raw?: string) => DashTx;
   PrivateKey: new (wif: string, network: unknown) => unknown;
+  Block: new (raw: Buffer) => { transactions: DashTx[] };
   Networks: { livenet: unknown; testnet: unknown };
 };
 
@@ -20,13 +21,34 @@ interface DashOutput {
   script: { toAddress: (n: unknown) => { toString: () => string }; toHex: () => string };
 }
 interface DashTx {
-  outputs: DashOutput[];
   hash: string;
+  outputs: DashOutput[];
   from: (utxo: unknown) => DashTx;
   to: (addr: string, sats: number) => DashTx;
   fee: (sats: number) => DashTx;
   sign: (key: unknown) => DashTx;
   toBuffer: () => Buffer;
+}
+
+export interface BlockHit {
+  address: string;
+  txid: string;
+  satoshis: number;
+}
+
+/** Parse a raw block (Dash special txs included) and find outputs to `addresses`. */
+export function scanBlockForAddresses(rawBlock: Uint8Array, addresses: Set<string>): BlockHit[] {
+  const block = new dashcore.Block(Buffer.from(rawBlock));
+  const hits: BlockHit[] = [];
+  for (const tx of block.transactions) {
+    for (const out of tx.outputs) {
+      const addr = outputAddress(out);
+      if (addr && addresses.has(addr)) {
+        hits.push({ address: addr, txid: tx.hash, satoshis: out.satoshis });
+      }
+    }
+  }
+  return hits;
 }
 
 const network = config.network === "mainnet" ? dashcore.Networks.livenet : dashcore.Networks.testnet;
