@@ -1,9 +1,9 @@
 {
-  "name": "dash-pay",
+  "name": "dashpaybox",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Dash crypto payment microservice for the content platform (quote, watch, sweep).",
+  "description": "Drop-in Dash payments microservice (HTTP API + signed webhook).",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",

@@ -1,4 +1,4 @@
-# dash-pay
+# DashPayBox
 
 Drop-in **Dash payments** for any platform. Run the container, set a few env
 vars, and accept Dash via a small HTTP API + signed webhook. Self-contained
