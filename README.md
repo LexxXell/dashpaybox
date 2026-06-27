@@ -24,6 +24,19 @@ it calls back the backend's `/payments/dash` webhook on settlement.
 ## Callback (service → backend, HMAC `X-Dash-Signature`)
 `POST {CALLBACK_URL}` `{event: confirmed|expired|mismatch, intent_id, order_id, txid?, received_duffs?, expected_duffs, rate, rate_source, occurred_at}`
 
+## DAPI connectivity (required)
+The SDK talks to Dash via evonode **DAPI gRPC-web**. Set `DAPI_SEEDS` to one or
+more evonode URLs (`https://<ip>:1443`, comma-separated) — without it the SDK
+targets `localhost:1443` and every call fails with `fetch failed`. Evonodes
+serve TLS by IP (cert won't validate), so `NODE_TLS_REJECT_UNAUTHORIZED=0` is
+set; payment validity is guaranteed by ChainLock/InstantLock (chain proofs),
+not TLS, and the backend callback is HMAC-signed.
+
+Note: the watcher detects payments arriving **while it is running** (mempool +
+new blocks). A payment made while the service is down is not auto-detected;
+recover it by re-driving the intent through the same `receivedDuffs` →
+`sendCallback` → `sweep` path.
+
 ## Status
 Phase 1 scaffold: config, DB, oracle+cache, one-time key generation, REST API,
 HMAC callbacks, and the expiry timer are implemented. **Chain watching**
