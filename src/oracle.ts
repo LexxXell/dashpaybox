@@ -1,5 +1,7 @@
 // Fiat→DASH rate via a pluggable oracle, with a short cache window.
+import { fetch } from "undici";
 import { config } from "./config.js";
+import { secureDispatcher } from "./dash.js";
 
 export interface Quote {
   duffs: number; // amount in duffs (1 DASH = 1e8 duffs)
@@ -24,7 +26,7 @@ class CoinGeckoRateProvider implements RateProvider {
     const url = `${config.coingeckoUrl}/simple/price?ids=${config.coingeckoDashId}&vs_currencies=${vs}`;
     const headers: Record<string, string> = {};
     if (config.coingeckoApiKey) headers["x-cg-demo-api-key"] = config.coingeckoApiKey;
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, { headers, dispatcher: secureDispatcher });
     if (!res.ok) throw new Error(`coingecko ${res.status}`);
     const data = (await res.json()) as Record<string, Record<string, number>>;
     const price = data?.[config.coingeckoDashId]?.[vs];

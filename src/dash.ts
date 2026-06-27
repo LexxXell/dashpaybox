@@ -1,26 +1,33 @@
-// Dash network client (DAPI gRPC via dash-core-sdk): payment detection +
-// transaction broadcast. Lazily constructed singleton.
+// Dash network client (DAPI gRPC-web via dash-core-sdk).
+//
+// TLS scoping: evonodes serve TLS by IP (cert won't validate) but payment
+// validity comes from chain proofs (ChainLock/InstantLock), not TLS — so the
+// global dispatcher skips verification (used by the SDK's fetch). Our own
+// outbound calls (oracle, callback) use `secureDispatcher`, which verifies.
 import { DashCoreSDK } from "dash-core-sdk";
+import { Agent, setGlobalDispatcher } from "undici";
 import { config } from "./config.js";
+import { resolveDapiUrls } from "./discovery.js";
+
+export const secureDispatcher = new Agent();
 
 let sdk: DashCoreSDK | null = null;
 
-export function getSdk(): DashCoreSDK {
-  if (sdk === null) {
-    // DAPI_SEEDS may list several evonode gRPC-web URLs (comma-separated) for
-    // resilience. Without it the SDK targets localhost:1443 and fails.
-    const seeds = config.dapiSeeds
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    // The runtime accepts string | string[]; the published types only declare
-    // string, so build options dynamically and cast.
-    const options: { network: typeof config.network; dapiUrl?: string | string[] } = {
-      network: config.network,
-    };
-    if (seeds.length === 1) options.dapiUrl = seeds[0];
-    else if (seeds.length > 1) options.dapiUrl = seeds;
-    sdk = new DashCoreSDK(options as ConstructorParameters<typeof DashCoreSDK>[0]);
+export async function initDash(): Promise<void> {
+  setGlobalDispatcher(new Agent({ connect: { rejectUnauthorized: false } }));
+  const urls = await resolveDapiUrls();
+  if (urls.length === 0) {
+    throw new Error("No DAPI endpoints — set DASH_SEEDS or check network connectivity");
   }
+  const options: { network: typeof config.network; dapiUrl?: string | string[] } = {
+    network: config.network,
+    dapiUrl: urls.length === 1 ? urls[0] : urls,
+  };
+  sdk = new DashCoreSDK(options as ConstructorParameters<typeof DashCoreSDK>[0]);
+  console.log(`dash: ${urls.length} DAPI endpoint(s) on ${config.network}`);
+}
+
+export function getSdk(): DashCoreSDK {
+  if (sdk === null) throw new Error("Dash SDK not initialized — call initDash() first");
   return sdk;
 }

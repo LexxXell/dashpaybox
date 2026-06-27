@@ -16,7 +16,11 @@ function bool(name: string, fallback: boolean): boolean {
 
 export type Network = "mainnet" | "testnet";
 
+import { createRequire } from "node:module";
+const pkg = createRequire(import.meta.url)("../package.json") as { version: string };
+
 export const config = {
+  version: pkg.version,
   network: (opt("NETWORK", "testnet") as Network),
   port: parseInt(opt("PORT", "8090"), 10),
 

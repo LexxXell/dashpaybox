@@ -28,13 +28,14 @@ export function buildServer() {
   const app = Fastify({ logger: true });
 
   app.addHook("preHandler", async (req, reply) => {
-    if (req.url === "/health") return;
+    if (req.url === "/health" || req.url === "/version") return;
     if (!authOk(req.headers["x-dash-auth"] as string | undefined)) {
       reply.code(401).send({ ok: false, error: "unauthorized" });
     }
   });
 
-  app.get("/health", async () => ({ ok: true, network: config.network }));
+  app.get("/health", async () => ({ ok: true, network: config.network, version: config.version }));
+  app.get("/version", async () => ({ name: "dash-pay", version: config.version }));
 
   app.post("/quote", async (req) => {
     const { amount_minor, currency } = req.body as QuoteBody;

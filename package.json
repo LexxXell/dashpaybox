@@ -14,7 +14,8 @@
     "@dashevo/dashcore-lib": "^0.22.0",
     "better-sqlite3": "^11.3.0",
     "dash-core-sdk": "^1.1.2",
-    "fastify": "^4.28.1"
+    "fastify": "^4.28.1",
+    "undici": "^6.19.8"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
