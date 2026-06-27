@@ -4,9 +4,18 @@
 // private key (WIF) is encrypted with KEYS_ENCRYPTION_SECRET and stored in the
 // service DB; on settlement the sweeper decrypts it to forward funds to the
 // fixed OWNER_STORAGE_ADDRESS (which is read from env, never the DB).
-import dashcore from "@dashevo/dashcore-lib";
+import pkg from "@dashevo/dashcore-lib";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { config } from "./config.js";
+
+// dashcore-lib ships loose typings; treat as dynamic.
+const dashcore = pkg as unknown as {
+  PrivateKey: new (data: unknown, network: unknown) => {
+    toAddress: (n: unknown) => { toString: () => string };
+    toWIF: () => string;
+  };
+  Networks: { livenet: unknown; testnet: unknown };
+};
 
 const { PrivateKey, Networks } = dashcore;
 const network = config.network === "mainnet" ? Networks.livenet : Networks.testnet;
