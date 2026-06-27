@@ -8,36 +8,38 @@
 import { getSdk } from "./dash.js";
 import { getIntent, listOpenIntents, updateIntent, type Intent } from "./db.js";
 import { sendCallback } from "./callback.js";
-import { sweep } from "./sweeper.js";
+import { receivedDuffs, sweep } from "./sweeper.js";
 
 const watching = new Set<string>();
+const TERMINAL = new Set(["confirmed", "swept", "mismatch"]);
 
 async function watchOne(intent: Intent): Promise<void> {
   if (watching.has(intent.id)) return;
   watching.add(intent.id);
   try {
     const sdk = getSdk();
-    const info = await sdk.waitForPayment(intent.address, intent.expected_duffs);
+    // Detect ANY incoming payment (>= 1 duff) that reaches finality, then
+    // compare the actual amount to what was expected.
+    const info = await sdk.waitForPayment(intent.address, 1);
+    const received = await receivedDuffs(info.txid, intent.address);
 
     const fresh = getIntent(intent.id);
-    if (fresh === undefined || fresh.status === "confirmed" || fresh.status === "swept") return;
+    if (fresh === undefined || TERMINAL.has(fresh.status)) return;
 
-    updateIntent(intent.id, {
-      status: "confirmed",
-      txid: info.txid,
-      received_duffs: intent.expected_duffs,
-    });
-    await sendCallback("confirmed", {
+    // Underpayment => mismatch (no access); exact/over => confirmed (access).
+    const event = received < fresh.expected_duffs ? "mismatch" : "confirmed";
+    updateIntent(intent.id, { status: event, txid: info.txid, received_duffs: received });
+    await sendCallback(event, {
       ...fresh,
-      status: "confirmed",
+      status: event,
       txid: info.txid,
-      received_duffs: intent.expected_duffs,
+      received_duffs: received,
     });
 
-    // Forward funds to the owner address (best-effort; payment already confirmed).
+    // Funds arrived in both cases — forward them to the owner address.
     try {
-      const sweepTxid = await sweep({ ...fresh, txid: info.txid });
-      updateIntent(intent.id, { status: "swept", sweep_txid: sweepTxid });
+      const sweepTxid = await sweep({ ...fresh, txid: info.txid, received_duffs: received });
+      updateIntent(intent.id, { sweep_txid: sweepTxid });
     } catch (err) {
       console.error(`sweep failed for intent ${intent.id}:`, err);
     }

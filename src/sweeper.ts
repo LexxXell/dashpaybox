@@ -1,7 +1,7 @@
-// Sweep settled funds from a one-time address to OWNER_STORAGE_ADDRESS.
+// Read received amounts and sweep settled funds to OWNER_STORAGE_ADDRESS.
 //
-// Fetches the received tx, locates the output paying the one-time address, then
-// builds/signs a 1-in/1-out tx to the owner address and broadcasts it.
+// Sweeping builds/signs a 1-in/1-out tx from the one-time address to the owner
+// address and broadcasts it via DAPI.
 import pkg from "@dashevo/dashcore-lib";
 import { config } from "./config.js";
 import { getSdk } from "./dash.js";
@@ -32,11 +32,30 @@ interface DashTx {
 const network = config.network === "mainnet" ? dashcore.Networks.livenet : dashcore.Networks.testnet;
 const SWEEP_FEE_DUFFS = 1000; // generous for a 1-in/1-out tx
 
+function outputAddress(out: DashOutput): string {
+  try {
+    return out.script.toAddress(network).toString();
+  } catch {
+    return "";
+  }
+}
+
+async function loadTx(txid: string): Promise<DashTx> {
+  const dapiTx = await getSdk().getTransaction(txid);
+  return new dashcore.Transaction(Buffer.from(dapiTx.transaction).toString("hex"));
+}
+
+/** Total duffs paid to `address` across a transaction's outputs. */
+export async function receivedDuffs(txid: string, address: string): Promise<number> {
+  const tx = await loadTx(txid);
+  return tx.outputs
+    .filter((out) => outputAddress(out) === address)
+    .reduce((sum, out) => sum + out.satoshis, 0);
+}
+
 export async function sweep(intent: Intent): Promise<string> {
   if (!intent.txid) throw new Error("sweep: intent has no txid");
-  const sdk = getSdk();
-  const dapiTx = await sdk.getTransaction(intent.txid);
-  const tx = new dashcore.Transaction(Buffer.from(dapiTx.transaction).toString("hex"));
+  const tx = await loadTx(intent.txid);
 
   interface Utxo {
     txId: string;
@@ -48,13 +67,7 @@ export async function sweep(intent: Intent): Promise<string> {
   let utxo: Utxo | null = null;
   for (let i = 0; i < tx.outputs.length; i++) {
     const out = tx.outputs[i];
-    let addr = "";
-    try {
-      addr = out.script.toAddress(network).toString();
-    } catch {
-      addr = "";
-    }
-    if (addr === intent.address) {
+    if (outputAddress(out) === intent.address) {
       utxo = {
         txId: intent.txid,
         outputIndex: i,
@@ -75,6 +88,6 @@ export async function sweep(intent: Intent): Promise<string> {
     .fee(SWEEP_FEE_DUFFS)
     .sign(priv);
 
-  await sdk.broadcastTransaction(new Uint8Array(sweepTx.toBuffer()));
+  await getSdk().broadcastTransaction(new Uint8Array(sweepTx.toBuffer()));
   return sweepTx.hash;
 }
