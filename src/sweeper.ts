@@ -3,10 +3,15 @@
 // Sweeping builds/signs a 1-in/1-out tx from the one-time address to the owner
 // address and broadcasts it via DAPI.
 import pkg from "@dashevo/dashcore-lib";
+import type { DashCoreSDK } from "dash-core-sdk";
 import { config } from "./config.js";
 import { getSdk } from "./dash.js";
 import type { Intent } from "./db.js";
 import { decrypt } from "./wallet.js";
+
+// The chain access sweeping needs. Defaulting to getSdk() keeps prod callers
+// unchanged while letting tests inject a fake (fixture in, broadcast captured).
+type TxSource = Pick<DashCoreSDK, "getTransaction" | "broadcastTransaction">;
 
 // dashcore-lib ships loose typings; treat as dynamic.
 const dashcore = pkg as unknown as {
@@ -62,22 +67,26 @@ function outputAddress(out: DashOutput): string {
   }
 }
 
-async function loadTx(txid: string): Promise<DashTx> {
-  const dapiTx = await getSdk().getTransaction(txid);
+async function loadTx(txid: string, sdk: TxSource): Promise<DashTx> {
+  const dapiTx = await sdk.getTransaction(txid);
   return new dashcore.Transaction(Buffer.from(dapiTx.transaction).toString("hex"));
 }
 
 /** Total duffs paid to `address` across a transaction's outputs. */
-export async function receivedDuffs(txid: string, address: string): Promise<number> {
-  const tx = await loadTx(txid);
+export async function receivedDuffs(
+  txid: string,
+  address: string,
+  sdk: TxSource = getSdk(),
+): Promise<number> {
+  const tx = await loadTx(txid, sdk);
   return tx.outputs
     .filter((out) => outputAddress(out) === address)
     .reduce((sum, out) => sum + out.satoshis, 0);
 }
 
-export async function sweep(intent: Intent): Promise<string> {
+export async function sweep(intent: Intent, sdk: TxSource = getSdk()): Promise<string> {
   if (!intent.txid) throw new Error("sweep: intent has no txid");
-  const tx = await loadTx(intent.txid);
+  const tx = await loadTx(intent.txid, sdk);
 
   interface Utxo {
     txId: string;
@@ -116,6 +125,6 @@ export async function sweep(intent: Intent): Promise<string> {
     .fee(SWEEP_FEE_DUFFS)
     .sign(priv);
 
-  await getSdk().broadcastTransaction(new Uint8Array(sweepTx.toBuffer()));
+  await sdk.broadcastTransaction(new Uint8Array(sweepTx.toBuffer()));
   return sweepTx.hash;
 }

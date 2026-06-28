@@ -19,7 +19,21 @@ Other scripts:
 npm run typecheck         # tsc --noEmit
 npm run build             # compile to dist/
 npm start                 # run the build
+npm test                  # node:test suite (via tsx)
 ```
+
+## Tests
+
+Tests run on the built-in `node:test` runner through `tsx` — no extra deps.
+Funds-critical logic (sweep, received amounts, block scan) is tested offline by
+injecting a fake SDK and constructing real-format transactions; the block-scan
+test uses a real captured testnet block. To (re)capture that fixture:
+
+```bash
+node --import tsx scripts/capture-fixtures.ts   # writes tests/fixtures/
+```
+
+CI runs `npm test` on every PR.
 
 ## Guidelines
 
