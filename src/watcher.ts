@@ -22,19 +22,30 @@ const settling = new Set<string>();
 const TERMINAL = new Set(["confirmed", "swept", "mismatch"]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Defaults give ~60 minutes of polling (240 × 15s); both are parameterized so
+// tests can drive the loop quickly.
+const FINALITY_ATTEMPTS = 240;
+const FINALITY_POLL_MS = 15_000;
+
 // Wait until the payment reaches finality per the intent's policy: InstantSend
 // (when enabled) or `min_confirmations` block confirmations; a ChainLock always
 // counts as final. Returns true on finality, false if the window elapsed
 // WITHOUT it — callers MUST NOT settle on false (the tx may still be reversible
 // or never confirm), otherwise the service would grant goods on an unsettled tx.
-async function awaitFinality(sdk: DashCoreSDK, txid: string, intent: Intent): Promise<boolean> {
+export async function awaitFinality(
+  sdk: DashCoreSDK,
+  txid: string,
+  intent: Intent,
+  attempts: number = FINALITY_ATTEMPTS,
+  pollMs: number = FINALITY_POLL_MS,
+): Promise<boolean> {
   const minConf = intent.instant_send === 0 ? Math.max(1, intent.min_confirmations) : 1;
-  for (let i = 0; i < 240; i++) {
+  for (let i = 0; i < attempts; i++) {
     const tx = await sdk.getTransaction(txid);
     if (tx.isChainLocked) return true;
     if (intent.instant_send !== 0 && tx.isInstantLocked) return true;
     if (tx.confirmations >= minConf) return true;
-    await sleep(15_000);
+    if (i < attempts - 1) await sleep(pollMs);
   }
   return false;
 }
