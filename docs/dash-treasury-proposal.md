@@ -55,6 +55,10 @@ DashPayBox is not a concept — a working **v0.1.0** is published:
   (wallet/keys, sweep, finality gate, oracle, API, real-testnet-block parsing)
   run in CI on every PR, protected `main`, reproducible Docker build published to
   GHCR.
+- **Integration examples:** copy-pasteable create-intent + signed-webhook
+  receivers for **Node, TypeScript, Python, and PHP**
+  ([examples/](../examples/)), covering the common-pitfall rules (verify HMAC
+  over the raw body, constant-time compare, idempotency).
 - **Security posture:** a self-conducted audit was completed and its findings
   fixed; the one remaining item (cryptographic finality verification — see §4) is
   the headline deliverable of this proposal and is documented transparently in
@@ -97,8 +101,10 @@ the prerequisite for safe mainnet use.
 
 ### (Stretch) M4 — Adoption (P2)
 
-Backend SDK snippets (Node/Python/PHP), an e-commerce plugin, hosted demo and
-quickstart — pursued only if M1–M3 complete within budget.
+Integration examples for Node, TypeScript, Python, and PHP **already ship**
+([examples/](../examples/)); M4 builds on them: packaged backend SDKs, an
+e-commerce plugin, a hosted demo and quickstart — pursued only if M1–M3 complete
+within budget.
 
 ## 5. Deliverables & acceptance
 
