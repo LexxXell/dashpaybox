@@ -1,7 +1,7 @@
 // Discover active evonode DAPI (gRPC-web) endpoints so the service works
 // out of the box without the operator hunting for node IPs.
-import { Agent, fetch } from "undici";
 import { config } from "./config.js";
+import { secureFetch } from "./http.js";
 
 // DAPI gRPC-web listens on 1443 (mainnet uses 443 on some nodes; 1443 works for
 // platform). Bundled fallbacks if discovery is unavailable.
@@ -10,10 +10,6 @@ const BUNDLED: Record<"mainnet" | "testnet", string[]> = {
   mainnet: [],
 };
 
-// Evonodes present TLS by IP (cert won't validate); discovery itself targets a
-// public explorer with a valid cert, so verify that call normally.
-const verifyingAgent = new Agent();
-
 interface Validator {
   proTxInfo?: { state?: { service?: string } };
 }
@@ -21,7 +17,9 @@ interface Validator {
 async function fetchActiveNodes(network: "mainnet" | "testnet"): Promise<string[]> {
   const host = network === "mainnet" ? "" : "testnet.";
   const url = `https://${host}platform-explorer.pshenmic.dev/validators?isActive=true&limit=30`;
-  const res = await fetch(url, { dispatcher: verifyingAgent, signal: AbortSignal.timeout(10_000) });
+  // The explorer has a valid cert; verify it (secureFetch never uses the
+  // insecure global dispatcher the evonode gRPC transport relies on).
+  const res = await secureFetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`explorer ${res.status}`);
   const body = (await res.json()) as { resultSet?: Validator[] };
   const urls = (body.resultSet ?? [])

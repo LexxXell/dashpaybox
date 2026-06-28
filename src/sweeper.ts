@@ -23,7 +23,7 @@ interface DashOutput {
 interface DashTx {
   hash: string;
   outputs: DashOutput[];
-  from: (utxo: unknown) => DashTx;
+  from: (utxo: unknown | unknown[]) => DashTx;
   to: (addr: string, sats: number) => DashTx;
   fee: (sats: number) => DashTx;
   sign: (key: unknown) => DashTx;
@@ -86,26 +86,32 @@ export async function sweep(intent: Intent): Promise<string> {
     script: string;
     satoshis: number;
   }
-  let utxo: Utxo | null = null;
+  // Spend EVERY output paying the one-time address, not just the first: a single
+  // funding tx may carry multiple outputs to it, and leaving any behind strands
+  // funds on a hot key forever.
+  const utxos: Utxo[] = [];
   for (let i = 0; i < tx.outputs.length; i++) {
     const out = tx.outputs[i];
     if (outputAddress(out) === intent.address) {
-      utxo = {
+      utxos.push({
         txId: intent.txid,
         outputIndex: i,
         address: intent.address,
         script: out.script.toHex(),
         satoshis: out.satoshis,
-      };
-      break;
+      });
     }
   }
-  if (utxo === null) throw new Error("sweep: no output paying the one-time address");
+  if (utxos.length === 0) throw new Error("sweep: no output paying the one-time address");
 
-  const sats = utxo.satoshis;
+  const sats = utxos.reduce((sum, u) => sum + u.satoshis, 0);
+  if (sats < config.minSweepDuffs) {
+    throw new Error(`sweep: ${sats} duffs below minimum ${config.minSweepDuffs} — left for manual handling`);
+  }
+
   const priv = new dashcore.PrivateKey(decrypt(intent.enc_privkey), network);
   const sweepTx = new dashcore.Transaction()
-    .from(utxo)
+    .from(utxos)
     .to(config.ownerStorageAddress, sats - SWEEP_FEE_DUFFS)
     .fee(SWEEP_FEE_DUFFS)
     .sign(priv);

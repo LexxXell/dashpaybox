@@ -2,14 +2,13 @@
 //
 // TLS scoping: evonodes serve TLS by IP (cert won't validate) but payment
 // validity comes from chain proofs (ChainLock/InstantLock), not TLS — so the
-// global dispatcher skips verification (used by the SDK's fetch). Our own
-// outbound calls (oracle, callback) use `secureDispatcher`, which verifies.
+// global dispatcher skips verification (used by the SDK's grpc-web fetch). Our
+// own outbound calls (oracle, callback, discovery) go through `secureFetch`
+// (see http.ts), which always verifies and never uses this global default.
 import { DashCoreSDK } from "dash-core-sdk";
 import { Agent, setGlobalDispatcher } from "undici";
 import { config } from "./config.js";
 import { resolveDapiUrls } from "./discovery.js";
-
-export const secureDispatcher = new Agent();
 
 let sdk: DashCoreSDK | null = null;
 

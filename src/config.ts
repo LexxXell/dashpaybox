@@ -35,9 +35,20 @@ export const config = {
 
   // oracle
   rateCacheTtlSeconds: parseInt(opt("RATE_CACHE_TTL_SECONDS", "60"), 10),
+  // Hard cap on how stale a cached rate may be served when the upstream is
+  // failing; beyond this the quote fails rather than mispricing the intent.
+  rateMaxStaleSeconds: parseInt(opt("RATE_MAX_STALE_SECONDS", "600"), 10),
   coingeckoUrl: opt("COINGECKO_API_URL", "https://api.coingecko.com/api/v3"),
   coingeckoApiKey: process.env.COINGECKO_API_KEY ?? "",
   coingeckoDashId: opt("COINGECKO_DASH_ID", "dash"),
+
+  // abuse controls (HTTP API)
+  rateLimitMax: parseInt(opt("RATE_LIMIT_MAX", "120"), 10),
+  rateLimitWindowSeconds: parseInt(opt("RATE_LIMIT_WINDOW_SECONDS", "60"), 10),
+  maxOpenIntents: parseInt(opt("MAX_OPEN_INTENTS", "1000"), 10),
+
+  // sweeping: never build a sweep below this (fee + dust would make it invalid).
+  minSweepDuffs: parseInt(opt("MIN_SWEEP_DUFFS", "10000"), 10),
 
   // payment lifecycle
   paymentWindowSeconds: parseInt(opt("PAYMENT_WINDOW_SECONDS", "900"), 10),
