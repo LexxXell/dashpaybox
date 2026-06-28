@@ -8,6 +8,8 @@ process.env.NETWORK ??= "testnet";
 process.env.AUTH_SECRET ??= "test-auth-secret";
 process.env.CALLBACK_URL ??= "https://example.test/webhook";
 process.env.CALLBACK_SECRET ??= "test-callback-secret";
-process.env.OWNER_STORAGE_ADDRESS ??= "yTestOwnerStorageAddressPlaceholder";
+// A real, valid testnet P2PKH address — sweep builds a tx paying it, and
+// dashcore-lib validates the destination.
+process.env.OWNER_STORAGE_ADDRESS ??= "yZGgsDcXVkque9ozQCEJgrDNSSjkkPg4DB";
 process.env.KEYS_ENCRYPTION_SECRET ??= "test-keys-encryption-secret-0123456789";
 process.env.DB_PATH ??= path.join(os.tmpdir(), `dashpaybox-test-${process.pid}-${Date.now()}.db`);
