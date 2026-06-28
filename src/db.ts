@@ -75,9 +75,22 @@ export function listOpenIntents(): Intent[] {
     .all() as Intent[];
 }
 
+// Expired intents whose funds were never consolidated. A payment can land on a
+// one-time address after the intent expired; such funds must still be swept to
+// the cold owner address rather than stranded on a hot key.
+export function listSweepableExpired(): Intent[] {
+  return db
+    .prepare("SELECT * FROM intents WHERE status = 'expired' AND sweep_txid IS NULL")
+    .all() as Intent[];
+}
+
 export function updateIntent(id: string, fields: Partial<Intent>): void {
   const keys = Object.keys(fields);
   if (keys.length === 0) return;
   const set = keys.map((k) => `${k} = @${k}`).join(", ");
   db.prepare(`UPDATE intents SET ${set} WHERE id = @id`).run({ ...fields, id });
+}
+
+export function closeDb(): void {
+  db.close();
 }

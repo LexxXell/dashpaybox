@@ -1,11 +1,10 @@
 // HMAC-signed callbacks to the integrator's webhook, with retry + backoff.
 import { createHmac } from "node:crypto";
-import { fetch } from "undici";
 import { config } from "./config.js";
-import { secureDispatcher } from "./dash.js";
+import { secureFetch } from "./http.js";
 import type { Intent } from "./db.js";
 
-export type CallbackEvent = "confirmed" | "expired" | "mismatch";
+export type CallbackEvent = "confirmed" | "expired" | "mismatch" | "late";
 
 // Backoff schedule (seconds) between delivery attempts.
 const RETRY_DELAYS_SEC = [0, 2, 5, 15, 60, 300];
@@ -17,6 +16,7 @@ export async function sendCallback(event: CallbackEvent, intent: Intent): Promis
     intent_id: intent.id,
     order_id: intent.order_id,
     txid: intent.txid ?? undefined,
+    sweep_txid: intent.sweep_txid ?? undefined,
     received_duffs: intent.received_duffs ?? undefined,
     expected_duffs: intent.expected_duffs,
     rate: intent.rate,
@@ -28,7 +28,7 @@ export async function sendCallback(event: CallbackEvent, intent: Intent): Promis
   for (let attempt = 0; attempt < RETRY_DELAYS_SEC.length; attempt++) {
     if (RETRY_DELAYS_SEC[attempt] > 0) await sleep(RETRY_DELAYS_SEC[attempt] * 1000);
     try {
-      const res = await fetch(config.callbackUrl, {
+      const res = await secureFetch(config.callbackUrl, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -36,8 +36,6 @@ export async function sendCallback(event: CallbackEvent, intent: Intent): Promis
           "X-Dash-Event": event,
         },
         body,
-        dispatcher: secureDispatcher,
-        signal: AbortSignal.timeout(15_000),
       });
       if (res.ok) return true;
       console.error(`callback ${event} for ${intent.id}: HTTP ${res.status} (attempt ${attempt + 1})`);
