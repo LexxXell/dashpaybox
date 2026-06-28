@@ -160,6 +160,8 @@ async function reconcile(): Promise<void> {
   }
 }
 
+let expiryTimer: ReturnType<typeof setInterval> | null = null;
+
 export function startWatcher(): void {
   void (async () => {
     // Recover missed payments first, before the expiry timer can close them.
@@ -167,7 +169,7 @@ export function startWatcher(): void {
 
     for (const intent of listOpenIntents()) watchIntent(intent);
 
-    setInterval(() => {
+    expiryTimer = setInterval(() => {
       const now = Date.now();
       for (const i of listOpenIntents()) {
         if (new Date(i.expires_at).getTime() <= now) {
@@ -177,4 +179,11 @@ export function startWatcher(): void {
       }
     }, 30_000);
   })();
+}
+
+export function stopWatcher(): void {
+  if (expiryTimer !== null) {
+    clearInterval(expiryTimer);
+    expiryTimer = null;
+  }
 }
