@@ -4,6 +4,29 @@
   "private": true,
   "type": "module",
   "description": "Drop-in Dash payments microservice (HTTP API + signed webhook).",
+  "license": "MIT",
+  "author": "LexxXell",
+  "homepage": "https://github.com/lexxxell/dashpaybox#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lexxxell/dashpaybox.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lexxxell/dashpaybox/issues"
+  },
+  "keywords": [
+    "dash",
+    "cryptocurrency",
+    "payments",
+    "payment-gateway",
+    "webhook",
+    "self-hosted",
+    "instantsend",
+    "chainlock"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",

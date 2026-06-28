@@ -1,8 +1,17 @@
 # DashPayBox
 
+[![Build & publish](https://github.com/lexxxell/dashpaybox/actions/workflows/release.yml/badge.svg)](https://github.com/lexxxell/dashpaybox/actions/workflows/release.yml)
+[![CI](https://github.com/lexxxell/dashpaybox/actions/workflows/ci.yml/badge.svg)](https://github.com/lexxxell/dashpaybox/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Image: GHCR](https://img.shields.io/badge/image-ghcr.io%2Flexxxell%2Fdashpaybox-2496ED?logo=docker&logoColor=white)](https://github.com/lexxxell/dashpaybox/pkgs/container/dashpaybox)
+
 Drop-in **Dash payments** for any platform. Run the container, set a few env
 vars, and accept Dash via a small HTTP API + signed webhook. Self-contained
 (own SQLite DB), no external services to wire beyond your own webhook endpoint.
+
+> **Status:** pre-1.0, **testnet / evaluation-grade**. Payment finality is not
+> yet BLS-verified against the LLMQ quorum — see [SECURITY.md](SECURITY.md) and
+> [ROADMAP.md](ROADMAP.md) before any mainnet use.
 
 ## Quickstart
 ```bash
@@ -128,3 +137,14 @@ npm install
 npm run dev            # tsx watch
 npm run build && npm start
 ```
+
+## Project
+
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
+- **Security:** [SECURITY.md](SECURITY.md) — report privately, do not open public issues
+- **Roadmap:** [ROADMAP.md](ROADMAP.md) — path to mainnet + Dash treasury funding
+- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+- **License:** [MIT](LICENSE)
+
+DashPayBox is built for the Dash ecosystem. Continued development is planned via
+a Dash treasury proposal — feedback and contributions are welcome.
