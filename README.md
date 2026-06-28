@@ -48,13 +48,16 @@ under/over-payments — flagged via webhook — manually).
 `POST {CALLBACK_URL}` with header `X-Dash-Signature: hex(HMAC-SHA256(body, CALLBACK_SECRET))`,
 retried with backoff. Body:
 ```json
-{ "event": "confirmed|expired|mismatch", "intent_id": "...", "order_id": "...",
-  "txid": "...", "received_duffs": 100000000, "expected_duffs": 30310034,
+{ "event": "confirmed|expired|mismatch|late", "intent_id": "...", "order_id": "...",
+  "txid": "...", "sweep_txid": "...", "received_duffs": 100000000, "expected_duffs": 30310034,
   "rate": 2647.3, "rate_source": "coingecko", "occurred_at": "..." }
 ```
 - `confirmed` — grant access (`received_duffs > expected_duffs` ⇒ overpayment; access still granted).
 - `mismatch` — underpayment; do **not** grant access.
 - `expired` — payment window elapsed with no payment.
+- `late` — payment arrived **after** the window expired. Access is **not** granted, but
+  the funds are consolidated to `OWNER_STORAGE_ADDRESS` (never stranded on the one-time
+  key) — `sweep_txid` is included. Refund the sender out-of-band if you choose.
 
 Verify the signature before trusting the body:
 ```js
@@ -68,22 +71,37 @@ expected = hmac.new(CALLBACK_SECRET.encode(), raw_body, hashlib.sha256).hexdiges
 ok = hmac.compare_digest(expected, request.headers["X-Dash-Signature"])
 ```
 
+Webhooks may be retried (and a captured one replayed), so make your handler
+**idempotent**: dedupe by `(intent_id, event)` and treat repeats as no-ops.
+Optionally reject deliveries whose `occurred_at` is far in the past.
+
 ## Environment
 | Var | Required | Default | Notes |
 |---|---|---|---|
 | `NETWORK` | – | `testnet` | `mainnet` / `testnet` |
 | `OWNER_STORAGE_ADDRESS` | ✅ | – | where funds are swept |
-| `KEYS_ENCRYPTION_SECRET` | ✅ | – | encrypts one-time keys at rest |
+| `KEYS_ENCRYPTION_SECRET` | – | *(auto-gen)* | encrypts one-time keys at rest; if unset, generated on first run next to the DB (back it up) |
 | `AUTH_SECRET` | ✅ | – | `X-Dash-Auth` for your backend→service calls |
 | `CALLBACK_URL` | ✅ | – | your webhook endpoint |
 | `CALLBACK_SECRET` | ✅ | – | HMAC key for webhook signature |
-| `DAPI_SEEDS` | – | *(auto-discover)* | comma-separated `https://ip:1443` to pin nodes |
+
+Secrets `AUTH_SECRET`, `CALLBACK_SECRET`, `KEYS_ENCRYPTION_SECRET` may instead be
+read from a file via the matching `<NAME>_FILE` env (Docker/K8s secrets),
+preferred over plain env. `KEYS_ENCRYPTION_SECRET` auto-generates only on a clean
+install; if the DB exists but the key is gone the service refuses to start (it
+won't orphan stored keys).
+| `DAPI_SEEDS` | – | *(auto-discover)* | comma-separated `https://ip:1443` to pin nodes; if set, used instead of explorer discovery |
 | `RATE_CACHE_TTL_SECONDS` | – | `60` | oracle cache window |
+| `RATE_MAX_STALE_SECONDS` | – | `600` | max age of a cached rate served on upstream failure |
 | `COINGECKO_API_KEY` | – | – | optional demo key |
+| `RATE_LIMIT_MAX` | – | `120` | requests per window per IP |
+| `RATE_LIMIT_WINDOW_SECONDS` | – | `60` | rate-limit window |
+| `MAX_OPEN_INTENTS` | – | `1000` | cap on concurrent open intents (`/intents` → 429 above it) |
 | `PAYMENT_WINDOW_SECONDS` | – | `900` | intent expiry |
 | `DEFAULT_INSTANT_SEND` | – | `true` | finalize on InstantSend |
 | `DEFAULT_MIN_CONFIRMATIONS` | – | `1` | else require N confirmations |
 | `RECONCILE_LOOKBACK_BLOCKS` | – | `30` | startup scan to recover payments missed during downtime |
+| `MIN_SWEEP_DUFFS` | – | `10000` | min sweepable amount; below it funds are left for manual handling |
 | `PORT` | – | `8090` | |
 
 TLS: evonode DAPI is reached without cert verification (servers are addressed by
@@ -94,6 +112,14 @@ The watcher sees payments while running and, on startup, scans the last
 `RECONCILE_LOOKBACK_BLOCKS` blocks to recover any missed during downtime. A
 payment older than that window is recovered by re-driving the intent through the
 same `receivedDuffs` → `sendCallback` → `sweep` path.
+
+A payment that lands **after** an intent expired is still consolidated to
+`OWNER_STORAGE_ADDRESS` rather than left stranded on the one-time key: the open
+subscription catches it within the same run, and on restart `reconcile` re-scans
+expired-but-unswept intents within the lookback window. Such funds are swept and
+reported via a `late` webhook (no access granted). Note: a late payment to an
+intent that expired in a *previous* run is only caught if it landed within the
+lookback window before startup (the DAPI client has no address-UTXO query).
 
 ## Dev
 ```bash
