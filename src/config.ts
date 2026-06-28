@@ -20,7 +20,7 @@ function bool(name: string, fallback: boolean): boolean {
 // Resolve a required secret from env, or from a `<NAME>_FILE` path (e.g. a
 // Docker/K8s secret mounted read-only) — preferred over env, which leaks more
 // readily (/proc, logs, crash dumps, child processes).
-function secret(name: string): string {
+export function secret(name: string): string {
   const direct = process.env[name];
   if (direct) return direct;
   const file = process.env[`${name}_FILE`];
@@ -39,7 +39,7 @@ function secret(name: string): string {
 // auto-generate on a clean install (no DB yet); if a DB exists but the key is
 // gone we refuse rather than orphan stored keys. For hardened deployments,
 // provide it externally (env or _FILE) to keep it off the data volume.
-function resolveKeysEncryptionSecret(dbPath: string): string {
+export function resolveKeysEncryptionSecret(dbPath: string): string {
   const direct = process.env.KEYS_ENCRYPTION_SECRET;
   if (direct) return direct;
 
