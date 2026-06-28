@@ -34,7 +34,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dashevo/dashcore-lib": "^0.22.0",
+    "@dashevo/dashcore-lib": "^0.25.0",
     "better-sqlite3": "^11.3.0",
     "dash-core-sdk": "^1.1.2",
     "fastify": "^4.28.1",
