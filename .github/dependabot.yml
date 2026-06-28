@@ -8,6 +8,20 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # Runtime deps: major upgrades are breaking (and funds-critical here), so
+      # review them manually instead of auto-PRing. Patch/minor still flow.
+      - dependency-name: "fastify"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "undici"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "better-sqlite3"
+        update-types: ["version-update:semver-major"]
+      # 0.x / actively-developed chain libs: even minors break — patch-only auto.
+      - dependency-name: "@dashevo/dashcore-lib"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "dash-core-sdk"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
@@ -16,3 +30,7 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # Pin the Node base-image major; bump it deliberately (native build + image).
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
