@@ -6,6 +6,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Upgraded runtime dependencies: `@dashevo/dashcore-lib` 0.25, `better-sqlite3`
+  12, `fastify` 5 — validated by the test suite. `undici` held at 6 (v8 requires
+  Node 22; a Node 20→22 migration is tracked separately).
+
+### Added
+
+- Test coverage for the finality gate (`awaitFinality`), the sweep path
+  (multi-output, minimum amount, signing) and block scanning against a real
+  testnet block.
+
 ## [0.1.0] - 2026-06-28
 
 First public release: a drop-in Dash payments microservice (HTTP API + signed
