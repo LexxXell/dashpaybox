@@ -24,7 +24,7 @@ const MINOR_EXPONENT: Record<string, number> = {
   BHD: 3, KWD: 3, OMR: 3, JOD: 3, TND: 3, IQD: 3, LYD: 3,
 };
 
-function minorPerMajor(currency: string): number {
+export function minorPerMajor(currency: string): number {
   return 10 ** (MINOR_EXPONENT[currency.toUpperCase()] ?? 2);
 }
 
@@ -48,7 +48,7 @@ class CoinGeckoRateProvider implements RateProvider {
 // Cache the rate per currency for a short window to smooth bursts / outages.
 // On upstream failure a cached value is served only while it is younger than
 // `maxStaleMs`; beyond that the quote fails rather than pricing on a stale rate.
-class CachingRateProvider implements RateProvider {
+export class CachingRateProvider implements RateProvider {
   private cache = new Map<string, { price: number; at: number }>();
   constructor(private inner: RateProvider, private ttlMs: number, private maxStaleMs: number) {}
   get source() {
