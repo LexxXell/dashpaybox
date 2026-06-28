@@ -4,6 +4,8 @@ data
 .git
 .github
 tests
+examples
+docs
 *.log
 .env
 npm-debug.log*
