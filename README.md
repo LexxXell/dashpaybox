@@ -140,6 +140,7 @@ npm run build && npm start
 
 ## Project
 
+- **Examples:** [examples/](examples/) — create-intent + signed-webhook receivers for Node, TypeScript, Python, PHP
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 - **Security:** [SECURITY.md](SECURITY.md) — report privately, do not open public issues
 - **Roadmap:** [ROADMAP.md](ROADMAP.md) — path to mainnet + Dash treasury funding
