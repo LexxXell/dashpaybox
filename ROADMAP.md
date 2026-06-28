@@ -35,4 +35,5 @@ production-grade and is the basis for a Dash treasury funding proposal.
 
 We intend to submit a Dash treasury proposal to fund continued development,
 prioritizing P0 (mainnet trust-minimization) and an independent security review.
+A draft is in [docs/dash-treasury-proposal.md](docs/dash-treasury-proposal.md).
 Feedback on priorities is welcome via issues.
